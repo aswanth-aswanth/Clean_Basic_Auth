@@ -1,24 +1,29 @@
 import { Request, Response, NextFunction } from 'express';
-import TokenManager from '../../../app/providers/TokenManager';
+import jwt from 'jsonwebtoken';
 
-export default function ensureAuthenticated(
-  req: Request,
+interface AuthRequest extends Request {
+  user?: any;
+}
+
+export const ensureAuthenticated = (
+  req: AuthRequest,
   res: Response,
   next: NextFunction
-): void {
+): void => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
-    return res.status(401).json({ error: 'Token is missing' });
+    res.status(401).json({ error: 'Token is missing' });
+    return;
   }
 
   const [, token] = authHeader.split(' ');
 
   try {
-    const decoded = new TokenManager().verifyToken(token);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!);
     req.user = decoded;
-    return next();
+    next();
   } catch {
-    return res.status(401).json({ error: 'Invalid token' });
+    res.status(401).json({ error: 'Invalid token' });
   }
-}
+};

@@ -1,11 +1,25 @@
-import express, { Request, Response, NextFunction } from 'express';
-import { HttpResponse } from '../../http/helpers/HttpResponse';
+import { Request, Response } from 'express';
 
-const adapter = (fn: Function) => (req: Request, res: Response, next: NextFunction) => {
-  fn(req, res, next).catch((err: Error) => {
-    const { message, statusCode = 500 } = err;
-    res.status(statusCode).json(HttpResponse.error(message, statusCode));
-  });
+export const adaptRoute = (controller: any) => {
+  return async (req: Request, res: Response) => {
+    try {
+      const httpRequest = {
+        body: req.body,
+        params: req.params,
+        query: req.query,
+        headers: req.headers,
+      };
+
+      const httpResponse = await controller.handle(httpRequest);
+
+      if (httpResponse.headers) {
+        res.set(httpResponse.headers);
+      }
+      res.status(httpResponse.statusCode).json(httpResponse.body);
+    } catch (err) {
+      const error = err as Error & { statusCode?: number }; // Type assertion
+      const { message, statusCode = 500 } = error;
+      res.status(statusCode).json({ error: message });
+    }
+  };
 };
-
-export default adapter;
